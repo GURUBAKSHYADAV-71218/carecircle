@@ -87,4 +87,16 @@ describe('SetupProfileModal Component', () => {
     expect(mockOnClose).toHaveBeenCalledTimes(1);
     expect(mockUpdatePatient).not.toHaveBeenCalled();
   });
+
+  it('regression: correctly associates all form labels with their corresponding inputs via htmlFor and id', () => {
+    render(<SetupProfileModal isOpen={true} onClose={mockOnClose} />);
+
+    expect(screen.getByLabelText(/^Full Name/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Date of Birth/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Gender/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Blood Group/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Contact Full Name/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Contact Phone/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Relationship/i)).toBeInTheDocument();
+  });
 });

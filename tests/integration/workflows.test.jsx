@@ -1,5 +1,5 @@
 import React from 'react';
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, act } from '@testing-library/react';
 import { CareProvider, useCare } from '../../src/context/CareContext.jsx';
 import { storageService, initializeStorage, migrateFromDemoData } from '../../src/services/storage.js';
@@ -292,6 +292,275 @@ describe('CareCircle Multi-Step Integration Workflows', () => {
       expect(ctx.appointments.length).toBe(0);
       expect(ctx.doseRecords.length).toBe(0);
       expect(localStorage.getItem('carecircle_app_version')).toBe('2');
+    });
+  });
+
+  describe('Regression Suite & Critical Edge Cases', () => {
+    it('decrements stock exactly once when marked taken, and duplicate action cannot decrement stock again', () => {
+      let ctx;
+      render(
+        <CareProvider>
+          <TestConsumer onReady={(c) => (ctx = c)} />
+        </CareProvider>
+      );
+
+      // Add medication with stock 10
+      act(() => {
+        ctx.addMedication({
+          name: 'Metformin',
+          dosage: '500 mg',
+          frequency: 'Once daily',
+          scheduleTimes: ['08:00'],
+          stockQuantity: 10,
+          lowStockThreshold: 3
+        });
+      });
+
+      const dose = ctx.doseRecords[0];
+      expect(dose.status).toBe('pending');
+      expect(ctx.medications[0].stockQuantity).toBe(10);
+
+      // First action: mark taken -> stock becomes 9
+      act(() => {
+        ctx.markDoseTaken(dose.id);
+      });
+      expect(ctx.medications[0].stockQuantity).toBe(9);
+      expect(ctx.doseRecords[0].status).toBe('taken');
+
+      // Second duplicate action on the already taken dose -> stock MUST remain 9!
+      act(() => {
+        ctx.markDoseTaken(dose.id);
+      });
+      expect(ctx.medications[0].stockQuantity).toBe(9);
+    });
+
+    it('clears patient.primaryCaregiver when the primary caregiver is removed from the care team', () => {
+      let ctx;
+      render(
+        <CareProvider>
+          <TestConsumer onReady={(c) => (ctx = c)} />
+        </CareProvider>
+      );
+
+      // Add caregiver
+      act(() => {
+        ctx.addCareTeamMember({
+          name: 'James Bond',
+          role: 'Primary Caregiver',
+          isPrimary: true,
+          phone: '+1 555-007-0007'
+        });
+      });
+
+      const member = ctx.careTeam[0];
+
+      // Designate as primary
+      act(() => {
+        ctx.setPrimaryCaregiver(member.id);
+      });
+      expect(ctx.patient.primaryCaregiver).toBe('James Bond');
+
+      // Now remove the primary caregiver
+      act(() => {
+        ctx.removeCareTeamMember(member.id);
+      });
+      expect(ctx.careTeam.length).toBe(0);
+      // Primary caregiver on patient profile must be cleared, not stale
+      expect(ctx.patient.primaryCaregiver).toBe('');
+    });
+
+    it('safely handles invalid or non-existent IDs across operations without throwing', () => {
+      let ctx;
+      render(
+        <CareProvider>
+          <TestConsumer onReady={(c) => (ctx = c)} />
+        </CareProvider>
+      );
+
+      expect(() => {
+        act(() => {
+          ctx.markDoseTaken('non-existent-dose-id');
+          ctx.markDoseMissed('non-existent-dose-id');
+          ctx.deleteMedication('non-existent-med-id');
+          ctx.togglePauseMedication('non-existent-med-id');
+          ctx.refillMedication('non-existent-med-id', 10);
+          ctx.deleteAppointment('non-existent-apt-id');
+          ctx.markAppointmentCompleted('non-existent-apt-id');
+          ctx.updateAppointment({ id: null });
+          ctx.removeCareTeamMember('non-existent-member-id');
+          ctx.setPrimaryCaregiver('non-existent-member-id');
+          ctx.updateCareTeamMember({ id: null });
+        });
+      }).not.toThrow();
+    });
+
+    it('toggles medication status between active and paused, and refilling updates stock and clears refill flag', () => {
+      let ctx;
+      render(
+        <CareProvider>
+          <TestConsumer onReady={(c) => (ctx = c)} />
+        </CareProvider>
+      );
+
+      act(() => {
+        ctx.addMedication({
+          name: 'Aspirin',
+          dosage: '81 mg',
+          stockQuantity: 2,
+          lowStockThreshold: 5,
+          scheduleTimes: ['09:00']
+        });
+      });
+
+      const medId = ctx.medications[0].id;
+      expect(ctx.medications[0].status).toBe('active');
+      expect(ctx.medications[0].refillNeeded).toBe(true);
+
+      // Pause medication
+      act(() => {
+        ctx.togglePauseMedication(medId);
+      });
+      expect(ctx.medications[0].status).toBe('paused');
+
+      // Resume medication
+      act(() => {
+        ctx.togglePauseMedication(medId);
+      });
+      expect(ctx.medications[0].status).toBe('active');
+
+      // Refill medication (+30 pills)
+      act(() => {
+        ctx.refillMedication(medId, 30);
+      });
+      expect(ctx.medications[0].stockQuantity).toBe(32);
+      expect(ctx.medications[0].refillNeeded).toBe(false);
+    });
+
+    it('manages notifications lifecycle: unread count, mark read/unread, mark all, and clear', () => {
+      let ctx;
+      render(
+        <CareProvider>
+          <TestConsumer onReady={(c) => (ctx = c)} />
+        </CareProvider>
+      );
+
+      act(() => {
+        ctx.createNotification('Test Alert 1', 'Message 1', 'urgent', 'medication');
+        ctx.createNotification('Test Alert 2', 'Message 2', 'info', 'appointment');
+      });
+
+      expect(ctx.notifications.length).toBe(2);
+      expect(ctx.unreadNotificationsCount).toBe(2);
+
+      const notif1 = ctx.notifications[0];
+
+      // Mark single read
+      act(() => {
+        ctx.markNotificationRead(notif1.id);
+      });
+      expect(ctx.unreadNotificationsCount).toBe(1);
+
+      // Mark single unread
+      act(() => {
+        ctx.markNotificationUnread(notif1.id);
+      });
+      expect(ctx.unreadNotificationsCount).toBe(2);
+
+      // Mark all read
+      act(() => {
+        ctx.markAllNotificationsRead();
+      });
+      expect(ctx.unreadNotificationsCount).toBe(0);
+
+      // Clear single notification
+      act(() => {
+        ctx.clearNotification(notif1.id);
+      });
+      expect(ctx.notifications.length).toBe(1);
+
+      // Clear all
+      act(() => {
+        ctx.clearAllNotifications();
+      });
+      expect(ctx.notifications.length).toBe(0);
+      expect(ctx.unreadNotificationsCount).toBe(0);
+    });
+
+    it('manages daily checklist toggles, reset, and settings preferences', () => {
+      let ctx;
+      render(
+        <CareProvider>
+          <TestConsumer onReady={(c) => (ctx = c)} />
+        </CareProvider>
+      );
+
+      expect(ctx.checklist.length).toBeGreaterThan(0);
+      const firstItem = ctx.checklist[0];
+      const initialCompleted = firstItem.completed;
+
+      // Toggle checklist item
+      act(() => {
+        ctx.toggleChecklistItem(firstItem.id);
+      });
+      expect(ctx.checklist[0].completed).toBe(!initialCompleted);
+
+      // Reset checklist
+      act(() => {
+        ctx.resetDailyChecklist();
+      });
+      expect(ctx.checklist.every((i) => !i.completed)).toBe(true);
+
+      // Update settings
+      act(() => {
+        ctx.updateSettings({ reminderLeadMinutes: 20 });
+      });
+      expect(ctx.settings.reminderLeadMinutes).toBe(20);
+    });
+
+    it('manages caregiver authentication mode switching and enforces provider boundary', () => {
+      let ctx;
+      render(
+        <CareProvider>
+          <TestConsumer onReady={(c) => (ctx = c)} />
+        </CareProvider>
+      );
+
+      // Invalid passcode fails
+      let authResult;
+      act(() => {
+        authResult = ctx.authenticateCaregiver('0000');
+      });
+      expect(authResult).toBe(false);
+      expect(ctx.viewMode).toBe('patient');
+
+      // Valid passcode (default 2468) succeeds and switches view mode
+      act(() => {
+        authResult = ctx.authenticateCaregiver('2468');
+      });
+      expect(authResult).toBe(true);
+      expect(ctx.viewMode).toBe('caregiver');
+
+      // Switch back to patient
+      act(() => {
+        ctx.switchBackToPatient();
+      });
+      expect(ctx.viewMode).toBe('patient');
+    });
+
+    it('throws meaningful error if useCare is used outside CareProvider', () => {
+      const OrphanConsumer = () => {
+        useCare();
+        return null;
+      };
+
+      // Suppress React error boundary log in test runner
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      expect(() => {
+        render(<OrphanConsumer />);
+      }).toThrow(/useCare must be used within a CareProvider/i);
+
+      consoleError.mockRestore();
     });
   });
 });

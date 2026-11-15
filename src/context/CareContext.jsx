@@ -194,10 +194,17 @@ export const CareProvider = ({ children }) => {
 
   // Mark dose taken
   const markDoseTaken = useCallback((doseId) => {
-    const timeStr = new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
     const targetDose = doseRecords.find((d) => d.id === doseId);
-    const medId = targetDose ? targetDose.medId : null;
-    const medName = targetDose ? targetDose.medName : "Medication";
+    if (!targetDose) return;
+
+    if (targetDose.status === "taken") {
+      showToast("Dose is already recorded as taken", "info");
+      return;
+    }
+
+    const timeStr = new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
+    const medId = targetDose.medId;
+    const medName = targetDose.medName || "Medication";
 
     setDoseRecords((prev) => {
       const updated = prev.map((d) => {
@@ -248,6 +255,12 @@ export const CareProvider = ({ children }) => {
   // Mark dose missed
   const markDoseMissed = useCallback((doseId) => {
     const targetDose = doseRecords.find((d) => d.id === doseId);
+    if (!targetDose) return;
+
+    if (targetDose.status === "missed") {
+      showToast("Dose is already marked as missed", "info");
+      return;
+    }
 
     setDoseRecords((prev) => {
       const updated = prev.map((d) => {
@@ -260,29 +273,27 @@ export const CareProvider = ({ children }) => {
       return updated;
     });
 
-    if (targetDose) {
-      const medName = targetDose.medName;
-      logTimelineEvent(`Missed Medication Dose: ${medName}`, `Scheduled dose at ${targetDose.scheduledTime} was marked as missed.`, "medication");
-      createNotification(
-        `Missed Dose Warning: ${medName}`,
-        `Dose scheduled for ${targetDose.scheduledTime} was missed. Caregiver alerted.`,
-        "urgent",
-        "medication"
-      );
+    const medName = targetDose.medName || "Medication";
+    logTimelineEvent(`Missed Medication Dose: ${medName}`, `Scheduled dose at ${targetDose.scheduledTime} was marked as missed.`, "medication");
+    createNotification(
+      `Missed Dose Warning: ${medName}`,
+      `Dose scheduled for ${targetDose.scheduledTime} was missed. Caregiver alerted.`,
+      "urgent",
+      "medication"
+    );
 
-      // Generate caregiver email preview payload
-      const emailPayload = generateEmailPayload(EMAIL_TEMPLATES.MISSED_DOSE, {
-        patientName: patient.name || "Patient",
-        caregiverName: patient.primaryCaregiver || patient.emergencyContact?.name || "Caregiver",
-        caregiverEmail: patient.emergencyContact?.email || "",
-        medName: targetDose.medName,
-        dosage: targetDose.dosage,
-        scheduledTime: targetDose.scheduledTime
-      });
+    // Generate caregiver email preview payload
+    const emailPayload = generateEmailPayload(EMAIL_TEMPLATES.MISSED_DOSE, {
+      patientName: patient.name || "Patient",
+      caregiverName: patient.primaryCaregiver || patient.emergencyContact?.name || "Caregiver",
+      caregiverEmail: patient.emergencyContact?.email || "",
+      medName: targetDose.medName,
+      dosage: targetDose.dosage,
+      scheduledTime: targetDose.scheduledTime
+    });
 
-      setEmailPreviewModalData(emailPayload);
-      showToast(`Marked ${medName} as Missed. Caregiver alert generated.`, "warning");
-    }
+    setEmailPreviewModalData(emailPayload);
+    showToast(`Marked ${medName} as Missed. Caregiver alert generated.`, "warning");
   }, [doseRecords, logTimelineEvent, createNotification, showToast, patient]);
 
   // Add Medication
@@ -348,7 +359,8 @@ export const CareProvider = ({ children }) => {
   // Delete Medication
   const deleteMedication = useCallback((id) => {
     const med = medications.find((m) => m.id === id);
-    const medName = med ? med.name : "Medication";
+    if (!med) return;
+    const medName = med.name;
 
     setMedications((prev) => {
       const updated = prev.filter((m) => m.id !== id);
@@ -413,7 +425,8 @@ export const CareProvider = ({ children }) => {
 
   const refillMedication = useCallback((id, addedPills = 30) => {
     const targetMed = medications.find((m) => m.id === id);
-    const medName = targetMed ? targetMed.name : "Medication";
+    if (!targetMed) return;
+    const medName = targetMed.name;
 
     setMedications((prev) => {
       const updated = prev.map((m) => {
@@ -456,19 +469,21 @@ export const CareProvider = ({ children }) => {
   }, [logTimelineEvent, createNotification, showToast]);
 
   const updateAppointment = useCallback((aptData) => {
+    if (!aptData || !aptData.id) return;
     setAppointments((prev) => {
       const updated = prev.map((a) => (a.id === aptData.id ? { ...a, ...aptData } : a));
       storageService.setAppointments(updated);
       return updated;
     });
 
-    logTimelineEvent(`Appointment Updated: ${aptData.doctorName}`, `Date or notes modified.`, "appointment");
-    showToast(`Updated appointment with ${aptData.doctorName}`, "success");
+    logTimelineEvent(`Appointment Updated: ${aptData.doctorName || "Doctor"}`, `Date or notes modified.`, "appointment");
+    showToast(`Updated appointment with ${aptData.doctorName || "Doctor"}`, "success");
   }, [logTimelineEvent, showToast]);
 
   const deleteAppointment = useCallback((id) => {
     const apt = appointments.find((a) => a.id === id);
-    const doctorName = apt ? apt.doctorName : "Doctor";
+    if (!apt) return;
+    const doctorName = apt.doctorName;
 
     setAppointments((prev) => {
       const updated = prev.filter((a) => a.id !== id);
@@ -482,7 +497,8 @@ export const CareProvider = ({ children }) => {
 
   const markAppointmentCompleted = useCallback((id) => {
     const apt = appointments.find((a) => a.id === id);
-    const docName = apt ? apt.doctorName : "Doctor";
+    if (!apt) return;
+    const docName = apt.doctorName;
 
     setAppointments((prev) => {
       const updated = prev.map((a) => (a.id === id ? { ...a, status: "completed" } : a));
@@ -551,18 +567,29 @@ export const CareProvider = ({ children }) => {
   }, [logTimelineEvent, showToast]);
 
   const updateCareTeamMember = useCallback((memberData) => {
+    if (!memberData || !memberData.id) return;
     setCareTeam((prev) => {
       const updated = prev.map((m) => (m.id === memberData.id ? { ...m, ...memberData } : m));
       storageService.setCareTeam(updated);
       return updated;
     });
 
+    if (memberData.isPrimary) {
+      setPatient((prev) => {
+        const updated = { ...prev, primaryCaregiver: memberData.name };
+        storageService.setPatient(updated);
+        return updated;
+      });
+    }
+
     showToast(`Updated ${memberData.name}'s details`, "success");
   }, [showToast]);
 
   const removeCareTeamMember = useCallback((id) => {
     const member = careTeam.find((m) => m.id === id);
-    const memberName = member ? member.name : "Member";
+    if (!member) return;
+    const memberName = member.name;
+    const wasPrimary = member.isPrimary || (patient && patient.primaryCaregiver === memberName);
 
     setCareTeam((prev) => {
       const updated = prev.filter((m) => m.id !== id);
@@ -570,13 +597,22 @@ export const CareProvider = ({ children }) => {
       return updated;
     });
 
+    if (wasPrimary) {
+      setPatient((prev) => {
+        const updated = { ...prev, primaryCaregiver: "" };
+        storageService.setPatient(updated);
+        return updated;
+      });
+    }
+
     logTimelineEvent(`Care Team Member Removed: ${memberName}`, `Access revoked.`, "caregiver");
     showToast(`Removed ${memberName} from Care Team`, "info");
-  }, [careTeam, logTimelineEvent, showToast]);
+  }, [careTeam, patient, logTimelineEvent, showToast]);
 
   const setPrimaryCaregiver = useCallback((id) => {
     const targetMember = careTeam.find((m) => m.id === id);
-    const primaryName = targetMember ? targetMember.name : "";
+    if (!targetMember) return;
+    const primaryName = targetMember.name;
 
     setCareTeam((prev) => {
       const updated = prev.map((m) => {
