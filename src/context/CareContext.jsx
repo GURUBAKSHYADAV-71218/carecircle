@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from "react";
-import { storageService, initializeStorage } from "../services/storage";
-import { generateEmailPayload, EMAIL_TEMPLATES } from "../services/emailService";
+import { storageService, initializeStorage } from "../services/storage.js";
+import { generateEmailPayload, EMAIL_TEMPLATES } from "../services/emailService.js";
 
 const CareContext = createContext(null);
 
@@ -195,15 +195,13 @@ export const CareProvider = ({ children }) => {
   // Mark dose taken
   const markDoseTaken = useCallback((doseId) => {
     const timeStr = new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
-
-    let medName = "Medication";
-    let medId = null;
+    const targetDose = doseRecords.find((d) => d.id === doseId);
+    const medId = targetDose ? targetDose.medId : null;
+    const medName = targetDose ? targetDose.medName : "Medication";
 
     setDoseRecords((prev) => {
       const updated = prev.map((d) => {
         if (d.id === doseId) {
-          medName = d.medName;
-          medId = d.medId;
           return { ...d, status: "taken", takenAt: timeStr };
         }
         return d;
@@ -212,7 +210,7 @@ export const CareProvider = ({ children }) => {
       return updated;
     });
 
-    // Reduce stock by 1 for the taken medication
+    // Reduce stock by 1 for the taken medication (Micro-feature 3)
     if (medId) {
       setMedications((prev) => {
         const updatedMeds = prev.map((m) => {
@@ -245,16 +243,15 @@ export const CareProvider = ({ children }) => {
     logTimelineEvent(`Medication Dose Taken: ${medName}`, `Scheduled dose confirmed at ${timeStr}.`, "medication");
     createNotification(`Medication Taken: ${medName}`, `Dose taken on schedule at ${timeStr}.`, "success", "medication");
     showToast(`Marked ${medName} as Taken!`, "success");
-  }, [logTimelineEvent, createNotification, showToast]);
+  }, [doseRecords, logTimelineEvent, createNotification, showToast]);
 
   // Mark dose missed
   const markDoseMissed = useCallback((doseId) => {
-    let targetDose = null;
+    const targetDose = doseRecords.find((d) => d.id === doseId);
 
     setDoseRecords((prev) => {
       const updated = prev.map((d) => {
         if (d.id === doseId) {
-          targetDose = d;
           return { ...d, status: "missed", takenAt: null };
         }
         return d;
@@ -286,7 +283,7 @@ export const CareProvider = ({ children }) => {
       setEmailPreviewModalData(emailPayload);
       showToast(`Marked ${medName} as Missed. Caregiver alert generated.`, "warning");
     }
-  }, [logTimelineEvent, createNotification, showToast, patient]);
+  }, [doseRecords, logTimelineEvent, createNotification, showToast, patient]);
 
   // Add Medication
   const addMedication = useCallback((medData) => {
@@ -372,18 +369,13 @@ export const CareProvider = ({ children }) => {
 
   // Pause / Resume Medication
   const togglePauseMedication = useCallback((id) => {
-    let newStatus = "active";
-    let medName = "";
+    const targetMed = medications.find((m) => m.id === id);
+    if (!targetMed) return;
+    const newStatus = targetMed.status === "active" ? "paused" : "active";
+    const medName = targetMed.name;
 
     setMedications((prev) => {
-      const updated = prev.map((m) => {
-        if (m.id === id) {
-          medName = m.name;
-          newStatus = m.status === "active" ? "paused" : "active";
-          return { ...m, status: newStatus };
-        }
-        return m;
-      });
+      const updated = prev.map((m) => (m.id === id ? { ...m, status: newStatus } : m));
       storageService.setMedications(updated);
       return updated;
     });
@@ -394,7 +386,7 @@ export const CareProvider = ({ children }) => {
       "medication"
     );
     showToast(`${medName} is now ${newStatus}`, "info");
-  }, [logTimelineEvent, showToast]);
+  }, [medications, logTimelineEvent, showToast]);
 
   // Stock update & Refill
   const updateMedicationStock = useCallback((id, newQuantity) => {
@@ -420,11 +412,12 @@ export const CareProvider = ({ children }) => {
   }, [showToast]);
 
   const refillMedication = useCallback((id, addedPills = 30) => {
-    let medName = "";
+    const targetMed = medications.find((m) => m.id === id);
+    const medName = targetMed ? targetMed.name : "Medication";
+
     setMedications((prev) => {
       const updated = prev.map((m) => {
         if (m.id === id) {
-          medName = m.name;
           return {
             ...m,
             stockQuantity: m.stockQuantity + addedPills,
@@ -440,7 +433,7 @@ export const CareProvider = ({ children }) => {
     logTimelineEvent(`Prescription Refilled: ${medName}`, `Added ${addedPills} pills to stock inventory.`, "medication");
     createNotification(`Medication Refilled: ${medName}`, `Supply replenished with ${addedPills} units.`, "success", "medication");
     showToast(`Refilled ${medName} (+${addedPills} units)!`, "success");
-  }, [logTimelineEvent, createNotification, showToast]);
+  }, [medications, logTimelineEvent, createNotification, showToast]);
 
   // Appointments Management
   const addAppointment = useCallback((aptData) => {
@@ -488,22 +481,18 @@ export const CareProvider = ({ children }) => {
   }, [appointments, logTimelineEvent, showToast]);
 
   const markAppointmentCompleted = useCallback((id) => {
-    let docName = "";
+    const apt = appointments.find((a) => a.id === id);
+    const docName = apt ? apt.doctorName : "Doctor";
+
     setAppointments((prev) => {
-      const updated = prev.map((a) => {
-        if (a.id === id) {
-          docName = a.doctorName;
-          return { ...a, status: "completed" };
-        }
-        return a;
-      });
+      const updated = prev.map((a) => (a.id === id ? { ...a, status: "completed" } : a));
       storageService.setAppointments(updated);
       return updated;
     });
 
     logTimelineEvent(`Appointment Completed: ${docName}`, `Consultation marked as completed.`, "appointment");
     showToast(`Marked appointment with ${docName} as completed`, "success");
-  }, [logTimelineEvent, showToast]);
+  }, [appointments, logTimelineEvent, showToast]);
 
   // Next Upcoming Appointment with countdown
   const nextAppointment = useMemo(() => {
@@ -547,6 +536,7 @@ export const CareProvider = ({ children }) => {
     const newMember = {
       id: `member-${Date.now()}`,
       ...memberData,
+      isPrimary: memberData.isPrimary ?? false,
       accessStatus: "Active"
     };
 
@@ -585,11 +575,12 @@ export const CareProvider = ({ children }) => {
   }, [careTeam, logTimelineEvent, showToast]);
 
   const setPrimaryCaregiver = useCallback((id) => {
-    let primaryName = "";
+    const targetMember = careTeam.find((m) => m.id === id);
+    const primaryName = targetMember ? targetMember.name : "";
+
     setCareTeam((prev) => {
       const updated = prev.map((m) => {
         if (m.id === id) {
-          primaryName = m.name;
           return { ...m, isPrimary: true, role: "Primary Caregiver" };
         }
         return { ...m, isPrimary: false };
@@ -598,15 +589,16 @@ export const CareProvider = ({ children }) => {
       return updated;
     });
 
-    setPatient((prev) => {
-      const updated = { ...prev, primaryCaregiver: primaryName };
-      storageService.setPatient(updated);
-      return updated;
-    });
-
-    logTimelineEvent(`Primary Caregiver Designated: ${primaryName}`, `Assigned primary coordination responsibilities.`, "caregiver");
-    showToast(`${primaryName} is now designated Primary Caregiver`, "success");
-  }, [logTimelineEvent, showToast]);
+    if (primaryName) {
+      setPatient((prev) => {
+        const updated = { ...prev, primaryCaregiver: primaryName };
+        storageService.setPatient(updated);
+        return updated;
+      });
+      logTimelineEvent(`Primary Caregiver Designated: ${primaryName}`, `Assigned primary coordination responsibilities.`, "caregiver");
+      showToast(`${primaryName} is now designated Primary Caregiver`, "success");
+    }
+  }, [careTeam, logTimelineEvent, showToast]);
 
   // Notification Operations
   const unreadNotificationsCount = useMemo(() => {

@@ -197,10 +197,11 @@ export const SetupProfileModal = ({ isOpen, onClose }) => {
             <div className="form-section-label">Personal Information</div>
             <div className="form-row">
               <div className="form-group form-group-full">
-                <label className="form-label">
+                <label htmlFor="setup-name" className="form-label">
                   <User size={14} /> Full Name <span className="required-star">*</span>
                 </label>
                 <input
+                  id="setup-name"
                   type="text"
                   name="name"
                   value={form.name}
@@ -215,8 +216,9 @@ export const SetupProfileModal = ({ isOpen, onClose }) => {
 
             <div className="form-row">
               <div className="form-group">
-                <label className="form-label">Date of Birth</label>
+                <label htmlFor="setup-dob" className="form-label">Date of Birth</label>
                 <input
+                  id="setup-dob"
                   type="date"
                   name="dob"
                   value={form.dob}
@@ -225,8 +227,8 @@ export const SetupProfileModal = ({ isOpen, onClose }) => {
                 />
               </div>
               <div className="form-group">
-                <label className="form-label">Gender</label>
-                <select name="gender" value={form.gender} onChange={handleChange} className="form-input form-select">
+                <label htmlFor="setup-gender" className="form-label">Gender</label>
+                <select id="setup-gender" name="gender" value={form.gender} onChange={handleChange} className="form-input form-select">
                   <option value="">Select gender</option>
                   <option value="Female">Female</option>
                   <option value="Male">Male</option>
@@ -238,8 +240,8 @@ export const SetupProfileModal = ({ isOpen, onClose }) => {
 
             <div className="form-row">
               <div className="form-group">
-                <label className="form-label">Blood Group</label>
-                <select name="bloodGroup" value={form.bloodGroup} onChange={handleChange} className="form-input form-select">
+                <label htmlFor="setup-bloodGroup" className="form-label">Blood Group</label>
+                <select id="setup-bloodGroup" name="bloodGroup" value={form.bloodGroup} onChange={handleChange} className="form-input form-select">
                   <option value="">Select blood group</option>
                   {["A+","A-","B+","B-","AB+","AB-","O+","O-"].map((bg) => (
                     <option key={bg} value={bg}>{bg}</option>
@@ -247,8 +249,9 @@ export const SetupProfileModal = ({ isOpen, onClose }) => {
                 </select>
               </div>
               <div className="form-group">
-                <label className="form-label"><Phone size={14} /> Phone</label>
+                <label htmlFor="setup-phone" className="form-label"><Phone size={14} /> Phone</label>
                 <input
+                  id="setup-phone"
                   type="tel"
                   name="phone"
                   value={form.phone}
@@ -261,8 +264,9 @@ export const SetupProfileModal = ({ isOpen, onClose }) => {
 
             <div className="form-row">
               <div className="form-group form-group-full">
-                <label className="form-label"><Mail size={14} /> Email Address</label>
+                <label htmlFor="setup-email" className="form-label"><Mail size={14} /> Email Address</label>
                 <input
+                  id="setup-email"
                   type="email"
                   name="email"
                   value={form.email}
@@ -275,8 +279,9 @@ export const SetupProfileModal = ({ isOpen, onClose }) => {
 
             <div className="form-row">
               <div className="form-group form-group-full">
-                <label className="form-label"><MapPin size={14} /> Home Address</label>
+                <label htmlFor="setup-address" className="form-label"><MapPin size={14} /> Home Address</label>
                 <input
+                  id="setup-address"
                   type="text"
                   name="address"
                   value={form.address}
@@ -289,8 +294,9 @@ export const SetupProfileModal = ({ isOpen, onClose }) => {
 
             <div className="form-row">
               <div className="form-group form-group-full">
-                <label className="form-label">Primary Physician</label>
+                <label htmlFor="setup-physician" className="form-label">Primary Physician</label>
                 <input
+                  id="setup-physician"
                   type="text"
                   name="physician"
                   value={form.physician}
@@ -303,8 +309,9 @@ export const SetupProfileModal = ({ isOpen, onClose }) => {
 
             <div className="form-row">
               <div className="form-group form-group-full">
-                <label className="form-label">Healthcare Notes / Allergies</label>
+                <label htmlFor="setup-notes" className="form-label">Healthcare Notes / Allergies</label>
                 <textarea
+                  id="setup-notes"
                   name="healthcareNotes"
                   value={form.healthcareNotes}
                   onChange={handleChange}
@@ -322,8 +329,9 @@ export const SetupProfileModal = ({ isOpen, onClose }) => {
 
             <div className="form-row">
               <div className="form-group">
-                <label className="form-label">Contact Full Name</label>
+                <label htmlFor="setup-ec-name" className="form-label">Contact Full Name</label>
                 <input
+                  id="setup-ec-name"
                   type="text"
                   name="emergencyContactName"
                   value={form.emergencyContactName}
@@ -333,8 +341,9 @@ export const SetupProfileModal = ({ isOpen, onClose }) => {
                 />
               </div>
               <div className="form-group">
-                <label className="form-label">Relationship</label>
+                <label htmlFor="setup-ec-relation" className="form-label">Relationship</label>
                 <input
+                  id="setup-ec-relation"
                   type="text"
                   name="emergencyContactRelation"
                   value={form.emergencyContactRelation}
@@ -347,8 +356,9 @@ export const SetupProfileModal = ({ isOpen, onClose }) => {
 
             <div className="form-row">
               <div className="form-group">
-                <label className="form-label"><Phone size={14} /> Contact Phone</label>
+                <label htmlFor="setup-ec-phone" className="form-label"><Phone size={14} /> Contact Phone</label>
                 <input
+                  id="setup-ec-phone"
                   type="tel"
                   name="emergencyContactPhone"
                   value={form.emergencyContactPhone}
@@ -358,8 +368,9 @@ export const SetupProfileModal = ({ isOpen, onClose }) => {
                 />
               </div>
               <div className="form-group">
-                <label className="form-label"><Mail size={14} /> Contact Email</label>
+                <label htmlFor="setup-ec-email" className="form-label"><Mail size={14} /> Contact Email</label>
                 <input
+                  id="setup-ec-email"
                   type="email"
                   name="emergencyContactEmail"
                   value={form.emergencyContactEmail}
