@@ -12,7 +12,7 @@ import {
   INITIAL_SETTINGS,
   generateInitialDoseRecords,
   DEMO_DATA_IDS
-} from "../data/initialData";
+} from "../data/initialData.js";
 
 const STORAGE_KEYS = {
   PATIENT: "carecircle_patient",
