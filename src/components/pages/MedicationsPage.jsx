@@ -3,7 +3,6 @@ import {
   Pill,
   Plus,
   Search,
-  Filter,
   CheckCircle2,
   Clock,
   AlertTriangle,
@@ -40,12 +39,11 @@ export const MedicationsPage = ({
 
   // Filtered Medications logic
   const filteredMedications = medications.filter((med) => {
-    // Search query check (Micro-feature 2)
     const matchesSearch =
       searchQuery === "" ||
       med.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       med.dosage.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      med.foodInstructions.toLowerCase().includes(searchQuery.toLowerCase());
+      (med.foodInstructions && med.foodInstructions.toLowerCase().includes(searchQuery.toLowerCase()));
 
     if (!matchesSearch) return false;
 
@@ -53,11 +51,9 @@ export const MedicationsPage = ({
     if (activeFilter === "active") return med.status === "active";
     if (activeFilter === "paused") return med.status === "paused";
 
-    // If filter is "taken", check if today has taken doses for this med
     if (activeFilter === "taken") {
       return todayDoses.some((d) => d.medId === med.id && d.status === "taken");
     }
-    // If filter is "missed", check if today has missed doses for this med
     if (activeFilter === "missed") {
       return todayDoses.some((d) => d.medId === med.id && d.status === "missed");
     }
@@ -70,7 +66,7 @@ export const MedicationsPage = ({
       {/* Top Controls Bar */}
       <div className="page-header-actions-bar">
         <div className="page-search-and-filters">
-          {/* Instant Search Bar (Micro-feature 2) */}
+          {/* Instant Search Bar */}
           <div className="search-input-wrapper">
             <Search size={16} className="search-icon" />
             <input
@@ -127,7 +123,7 @@ export const MedicationsPage = ({
         </button>
       </div>
 
-      {/* Low Stock Alert Banner (Micro-feature 3 & 4) */}
+      {/* Low Stock Alert Banner */}
       <LowStockBanner onOpenRefillModal={onOpenRefillModal} />
 
       {/* Section: Today's Dose Confirmation Tracker */}
@@ -144,59 +140,71 @@ export const MedicationsPage = ({
           </div>
         </div>
 
-        <div className="today-tracker-grid">
-          {todayDoses.map((dose) => (
-            <div
-              key={dose.id}
-              className={`today-tracker-card dose-status-${dose.status}`}
-            >
-              <div className="tracker-card-top">
-                <span className="tracker-time-chip">
-                  <Clock size={13} /> {dose.scheduledTime}
-                </span>
-                <span className={`badge ${
-                  dose.status === "taken" ? "badge-turquoise" :
-                  dose.status === "missed" ? "badge-coral" : "badge-pending"
-                }`}>
-                  {dose.status}
-                </span>
-              </div>
-
-              <div className="tracker-card-body">
-                <h4 className="tracker-med-name">{dose.medName}</h4>
-                <span className="tracker-dosage">{dose.dosage}</span>
-                {dose.takenAt && (
-                  <span className="tracker-timestamp">Logged: {dose.takenAt}</span>
-                )}
-              </div>
-
-              <div className="tracker-card-actions">
-                {dose.status === "pending" ? (
-                  <>
-                    <button
-                      onClick={() => markDoseTaken(dose.id)}
-                      className="btn btn-sm btn-primary"
-                      title="Mark dose as Taken"
-                    >
-                      <CheckCircle2 size={14} /> Taken
-                    </button>
-                    <button
-                      onClick={() => markDoseMissed(dose.id)}
-                      className="btn btn-sm btn-soft-coral"
-                      title="Mark dose as Missed"
-                    >
-                      <AlertTriangle size={14} /> Missed
-                    </button>
-                  </>
-                ) : (
-                  <span className="tracker-action-done">
-                    {dose.status === "taken" ? "Confirmed Taken" : "Marked Missed"}
+        {todayDoses.length === 0 ? (
+          <div className="empty-state-inline" style={{ padding: "28px 16px", textAlign: "center" }}>
+            <Pill size={36} style={{ color: "var(--aqua)", margin: "0 auto 10px" }} />
+            <h4 style={{ color: "var(--deep-ocean)", marginBottom: "6px" }}>No doses scheduled for today</h4>
+            <p style={{ color: "var(--text-muted)", fontSize: "0.85rem", maxWidth: "420px", margin: "0 auto" }}>
+              {medications.length === 0
+                ? "Add your first medication prescription to begin tracking daily doses."
+                : "All active medications are currently outside today's schedule or paused."}
+            </p>
+          </div>
+        ) : (
+          <div className="today-tracker-grid">
+            {todayDoses.map((dose) => (
+              <div
+                key={dose.id}
+                className={`today-tracker-card dose-status-${dose.status}`}
+              >
+                <div className="tracker-card-top">
+                  <span className="tracker-time-chip">
+                    <Clock size={13} /> {dose.scheduledTime}
                   </span>
-                )}
+                  <span className={`badge ${
+                    dose.status === "taken" ? "badge-turquoise" :
+                    dose.status === "missed" ? "badge-coral" : "badge-pending"
+                  }`}>
+                    {dose.status}
+                  </span>
+                </div>
+
+                <div className="tracker-card-body">
+                  <h4 className="tracker-med-name">{dose.medName}</h4>
+                  <span className="tracker-dosage">{dose.dosage}</span>
+                  {dose.takenAt && (
+                    <span className="tracker-timestamp">Logged: {dose.takenAt}</span>
+                  )}
+                </div>
+
+                <div className="tracker-card-actions">
+                  {dose.status === "pending" ? (
+                    <>
+                      <button
+                        onClick={() => markDoseTaken(dose.id)}
+                        className="btn btn-sm btn-primary"
+                        title="Mark dose as Taken"
+                      >
+                        <CheckCircle2 size={14} /> Taken
+                      </button>
+                      <button
+                        onClick={() => markDoseMissed(dose.id)}
+                        className="btn btn-sm btn-soft-coral"
+                        title="Mark dose as Missed"
+                      >
+                        <AlertTriangle size={14} /> Missed
+                      </button>
+                    </>
+                  ) : (
+                    <span className="tracker-action-done">
+                      {dose.status === "taken" ? "Confirmed Taken" : "Marked Missed"}
+                    </span>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Section: Structured Medication Prescriptions List */}
@@ -208,7 +216,21 @@ export const MedicationsPage = ({
           </h3>
         </div>
 
-        {filteredMedications.length === 0 ? (
+        {medications.length === 0 ? (
+          <div className="card empty-meds-card" style={{ textAlign: "center", padding: "40px 20px" }}>
+            <Pill size={42} style={{ color: "var(--aqua)", margin: "0 auto 12px" }} />
+            <h4 style={{ fontSize: "1.2rem", fontWeight: 700, color: "var(--deep-ocean)", marginBottom: "8px" }}>
+              No medications added yet
+            </h4>
+            <p style={{ color: "var(--text-muted)", fontSize: "0.9rem", maxWidth: "460px", margin: "0 auto 20px", lineHeight: 1.5 }}>
+              Create your daily medication regimen to track dosage, set scheduled times, and receive proactive low stock reminders.
+            </p>
+            <button onClick={onOpenAddModal} className="btn btn-primary" style={{ margin: "0 auto" }}>
+              <Plus size={16} />
+              <span>Add Your First Medication</span>
+            </button>
+          </div>
+        ) : filteredMedications.length === 0 ? (
           <div className="card empty-meds-card">
             <Info size={28} className="text-muted" />
             <h4>No medications match your query or filter</h4>
@@ -283,11 +305,11 @@ export const MedicationsPage = ({
                     <div className="med-detail-row">
                       <span className="detail-label">Start Date:</span>
                       <span className="detail-value">
-                        {med.startDate} {med.endDate ? `to ${med.endDate}` : "(Ongoing)"}
+                        {med.startDate || "Ongoing"} {med.endDate ? `to ${med.endDate}` : ""}
                       </span>
                     </div>
 
-                    {/* Micro-features 3 & 4: Low Stock & Refill Tracker */}
+                    {/* Low Stock & Refill Tracker */}
                     <div className="med-detail-row stock-row">
                       <span className="detail-label">Remaining Supply:</span>
                       <div className="stock-control-group">

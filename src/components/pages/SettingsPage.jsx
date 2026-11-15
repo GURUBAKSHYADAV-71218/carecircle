@@ -1,20 +1,17 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import {
-  Settings,
   User,
-  Shield,
   Bell,
   RotateCcw,
   Save,
   Lock,
-  Phone,
-  Info,
-  CheckCircle2,
-  AlertTriangle
+  Camera,
+  Trash2
 } from "lucide-react";
 import { useCare } from "../../context/CareContext";
+import { InitialsAvatar } from "../common/InitialsAvatar";
 
-export const SettingsPage = ({ onOpenResetConfirm }) => {
+export const SettingsPage = ({ onOpenResetConfirm, onOpenSetupProfile }) => {
   const {
     patient,
     updatePatient,
@@ -23,18 +20,22 @@ export const SettingsPage = ({ onOpenResetConfirm }) => {
     showToast
   } = useCare();
 
+  const fileInputRef = useRef(null);
+
   // Patient Profile state
   const [profileForm, setProfileForm] = useState({
     name: patient.name || "",
-    age: patient.age || 72,
+    age: patient.age || "",
     dob: patient.dob || "",
-    bloodGroup: patient.bloodGroup || "O+",
+    bloodGroup: patient.bloodGroup || "",
+    gender: patient.gender || "",
     phone: patient.phone || "",
     email: patient.email || "",
     address: patient.address || "",
     primaryCaregiver: patient.primaryCaregiver || "",
     healthcareNotes: patient.healthcareNotes || "",
-    physician: patient.physician || ""
+    physician: patient.physician || "",
+    avatar: patient.avatar || null
   });
 
   // Emergency contact state
@@ -48,7 +49,7 @@ export const SettingsPage = ({ onOpenResetConfirm }) => {
   // Passcode state
   const [passcode, setPasscode] = useState(settings.demoPasscode || "2468");
 
-  // Notification Preferences state (Micro-feature 8)
+  // Notification Preferences state
   const [notifPrefs, setNotifPrefs] = useState({
     medsUpcoming: settings.notificationPrefs?.medsUpcoming ?? true,
     medsMissed: settings.notificationPrefs?.medsMissed ?? true,
@@ -57,12 +58,30 @@ export const SettingsPage = ({ onOpenResetConfirm }) => {
     lowStockRefill: settings.notificationPrefs?.lowStockRefill ?? true
   });
 
+  const handleAvatarFile = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      showToast("Avatar image must be under 2 MB", "error");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      setProfileForm((prev) => ({ ...prev, avatar: evt.target.result }));
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveAvatar = () => {
+    setProfileForm((prev) => ({ ...prev, avatar: null }));
+  };
+
   const handleSaveProfile = (e) => {
     e.preventDefault();
     updatePatient({
       ...patient,
       ...profileForm,
-      age: parseInt(profileForm.age, 10) || patient.age,
+      age: profileForm.age ? parseInt(profileForm.age, 10) : "",
       emergencyContact: emergencyForm
     });
   };
@@ -104,12 +123,54 @@ export const SettingsPage = ({ onOpenResetConfirm }) => {
             </div>
 
             <form onSubmit={handleSaveProfile}>
+              {/* Profile Photo / Avatar Setting */}
+              <div style={{ display: "flex", alignItems: "center", gap: "16px", marginBottom: "20px", padding: "12px", background: "var(--soft-aqua-bg)", borderRadius: "10px" }}>
+                <InitialsAvatar
+                  name={profileForm.name}
+                  avatar={profileForm.avatar}
+                  size={60}
+                />
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <div style={{ display: "flex", gap: "8px" }}>
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="btn btn-outline btn-sm"
+                    >
+                      <Camera size={13} />
+                      <span>{profileForm.avatar ? "Change Photo" : "Upload Photo"}</span>
+                    </button>
+                    {profileForm.avatar && (
+                      <button
+                        type="button"
+                        onClick={handleRemoveAvatar}
+                        className="btn btn-outline btn-sm text-coral"
+                        title="Remove custom photo"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    )}
+                  </div>
+                  <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
+                    Optional • Max 2 MB • Initials shown if omitted
+                  </span>
+                </div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  style={{ display: "none" }}
+                  onChange={handleAvatarFile}
+                />
+              </div>
+
               <div className="form-row">
                 <div className="form-group">
                   <label className="form-label">Patient Full Name</label>
                   <input
                     type="text"
                     value={profileForm.name}
+                    placeholder="e.g. John Doe"
                     onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}
                     className="form-control"
                   />
@@ -120,6 +181,7 @@ export const SettingsPage = ({ onOpenResetConfirm }) => {
                   <input
                     type="number"
                     value={profileForm.age}
+                    placeholder="e.g. 70"
                     onChange={(e) => setProfileForm({ ...profileForm, age: e.target.value })}
                     className="form-control"
                   />
@@ -144,6 +206,7 @@ export const SettingsPage = ({ onOpenResetConfirm }) => {
                     onChange={(e) => setProfileForm({ ...profileForm, bloodGroup: e.target.value })}
                     className="form-control"
                   >
+                    <option value="">Select blood group</option>
                     <option value="A+">A+</option>
                     <option value="A-">A-</option>
                     <option value="B+">B+</option>
@@ -162,6 +225,7 @@ export const SettingsPage = ({ onOpenResetConfirm }) => {
                   <input
                     type="text"
                     value={profileForm.phone}
+                    placeholder="+1 (555) 000-0000"
                     onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
                     className="form-control"
                   />
@@ -172,6 +236,7 @@ export const SettingsPage = ({ onOpenResetConfirm }) => {
                   <input
                     type="email"
                     value={profileForm.email}
+                    placeholder="patient@example.com"
                     onChange={(e) => setProfileForm({ ...profileForm, email: e.target.value })}
                     className="form-control"
                   />
@@ -183,6 +248,7 @@ export const SettingsPage = ({ onOpenResetConfirm }) => {
                 <input
                   type="text"
                   value={profileForm.address}
+                  placeholder="Street, City, State"
                   onChange={(e) => setProfileForm({ ...profileForm, address: e.target.value })}
                   className="form-control"
                 />
@@ -193,6 +259,7 @@ export const SettingsPage = ({ onOpenResetConfirm }) => {
                 <input
                   type="text"
                   value={profileForm.physician}
+                  placeholder="e.g. Dr. Jane Smith"
                   onChange={(e) => setProfileForm({ ...profileForm, physician: e.target.value })}
                   className="form-control"
                 />
@@ -203,6 +270,7 @@ export const SettingsPage = ({ onOpenResetConfirm }) => {
                 <textarea
                   rows={3}
                   value={profileForm.healthcareNotes}
+                  placeholder="Known allergies, dietary considerations, mobility notes..."
                   onChange={(e) => setProfileForm({ ...profileForm, healthcareNotes: e.target.value })}
                   className="form-control"
                 />
@@ -217,6 +285,7 @@ export const SettingsPage = ({ onOpenResetConfirm }) => {
                     <input
                       type="text"
                       value={emergencyForm.name}
+                      placeholder="e.g. Sarah Doe"
                       onChange={(e) => setEmergencyForm({ ...emergencyForm, name: e.target.value })}
                       className="form-control"
                     />
@@ -227,6 +296,7 @@ export const SettingsPage = ({ onOpenResetConfirm }) => {
                     <input
                       type="text"
                       value={emergencyForm.relation}
+                      placeholder="e.g. Daughter, Caregiver, Neighbor"
                       onChange={(e) => setEmergencyForm({ ...emergencyForm, relation: e.target.value })}
                       className="form-control"
                     />
@@ -239,6 +309,7 @@ export const SettingsPage = ({ onOpenResetConfirm }) => {
                     <input
                       type="text"
                       value={emergencyForm.phone}
+                      placeholder="+1 (555) 000-0000"
                       onChange={(e) => setEmergencyForm({ ...emergencyForm, phone: e.target.value })}
                       className="form-control"
                     />
@@ -249,6 +320,7 @@ export const SettingsPage = ({ onOpenResetConfirm }) => {
                     <input
                       type="email"
                       value={emergencyForm.email}
+                      placeholder="contact@example.com"
                       onChange={(e) => setEmergencyForm({ ...emergencyForm, email: e.target.value })}
                       className="form-control"
                     />
@@ -265,7 +337,7 @@ export const SettingsPage = ({ onOpenResetConfirm }) => {
           </div>
         </div>
 
-        {/* Right Column: Security, Notification Prefs, Demo Data Reset */}
+        {/* Right Column: Security, Notification Prefs, Data Reset */}
         <div className="settings-col">
           {/* Card: Caregiver Demo Passcode */}
           <div className="card settings-card">
@@ -278,10 +350,10 @@ export const SettingsPage = ({ onOpenResetConfirm }) => {
 
             <form onSubmit={handleSaveSecurity}>
               <p className="settings-desc">
-                Set the passcode required to access the Caregiver View on this device.
+                Set the passcode required to unlock the Caregiver View on this device.
               </p>
               <div className="form-group">
-                <label className="form-label">Demo Passcode</label>
+                <label className="form-label">Passcode</label>
                 <input
                   type="text"
                   maxLength={8}
@@ -299,7 +371,7 @@ export const SettingsPage = ({ onOpenResetConfirm }) => {
             </form>
           </div>
 
-          {/* Micro-feature 8: Notification Preferences */}
+          {/* Notification Preferences */}
           <div className="card settings-card">
             <div className="card-header">
               <div className="card-title">
@@ -380,26 +452,26 @@ export const SettingsPage = ({ onOpenResetConfirm }) => {
             </div>
           </div>
 
-          {/* Card: Reset Demo Data */}
+          {/* Card: Reset All Data */}
           <div className="card settings-card card-danger-zone">
             <div className="card-header">
               <div className="card-title text-coral">
                 <RotateCcw size={19} />
-                <span>Reset Demonstration Data</span>
+                <span>Reset Application Data</span>
               </div>
             </div>
 
             <p className="settings-desc">
-              Restores initial fictional demo data for Margaret Wilson, medications, doses, and appointments.
+              Permanently removes all medications, appointments, care team members, and health records stored in this browser.
             </p>
 
             <button
               onClick={onOpenResetConfirm}
               className="btn btn-soft-coral"
-              title="Reset all LocalStorage data to initial seed"
+              title="Reset all LocalStorage data to clean empty state"
             >
               <RotateCcw size={15} />
-              <span>Reset All Demo Data</span>
+              <span>Reset All Data</span>
             </button>
           </div>
 
@@ -407,7 +479,7 @@ export const SettingsPage = ({ onOpenResetConfirm }) => {
           <div className="card settings-card app-info-card">
             <div className="app-info-brand">
               <span className="app-info-name">CareCircle</span>
-              <span className="badge badge-ocean">v1.0.0 Stable</span>
+              <span className="badge badge-ocean">v2.0.0 Clean</span>
             </div>
             <p className="app-info-desc">
               Collaborative Elderly Healthcare Management Platform. Built for high reliability, offline persistence via LocalStorage, and full caregiver accessibility.

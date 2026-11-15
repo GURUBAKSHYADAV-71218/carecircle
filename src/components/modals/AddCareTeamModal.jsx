@@ -8,11 +8,11 @@ export const AddCareTeamModal = ({ isOpen, onClose }) => {
   const [formData, setFormData] = useState({
     name: "",
     role: "Family Member",
-    relation: "Son",
+    relation: "",
     email: "",
     phone: "",
     permissions: "View health schedule, receive medication alerts",
-    avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=256"
+    avatar: null
   });
 
   const [formErrors, setFormErrors] = useState({});
@@ -65,7 +65,7 @@ export const AddCareTeamModal = ({ isOpen, onClose }) => {
               <label className="form-label">Full Name *</label>
               <input
                 type="text"
-                placeholder="e.g. David Wilson"
+                placeholder="e.g. Alex Morgan"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 className={`form-control ${formErrors.name ? "input-error" : ""}`}
@@ -106,7 +106,7 @@ export const AddCareTeamModal = ({ isOpen, onClose }) => {
               <label className="form-label">Contact Phone Number *</label>
               <input
                 type="text"
-                placeholder="e.g. +1 (555) 876-5432"
+                placeholder="e.g. +1 (555) 000-0000"
                 value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                 className={`form-control ${formErrors.phone ? "input-error" : ""}`}
@@ -119,7 +119,7 @@ export const AddCareTeamModal = ({ isOpen, onClose }) => {
             <label className="form-label">Email Address *</label>
             <input
               type="email"
-              placeholder="e.g. david.w@demo.carecircle.io"
+              placeholder="e.g. member@example.com"
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               className={`form-control ${formErrors.email ? "input-error" : ""}`}

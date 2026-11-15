@@ -5,7 +5,7 @@ import { generateEmailPayload, EMAIL_TEMPLATES } from "../services/emailService"
 const CareContext = createContext(null);
 
 export const CareProvider = ({ children }) => {
-  // Ensure storage is initialized
+  // Ensure storage is initialized and demo data migrated
   useEffect(() => {
     initializeStorage();
   }, []);
@@ -40,9 +40,10 @@ export const CareProvider = ({ children }) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
-  // Timeline logger
+  // Timeline logger — handles empty patient name gracefully
   const logTimelineEvent = useCallback((title, description, category = "system", author = null) => {
-    const currentAuthor = author || (viewMode === "caregiver" ? "Sarah Wilson (Caregiver)" : patient.name);
+    const patientLabel = patient.name || "Patient";
+    const currentAuthor = author || (viewMode === "caregiver" ? "Care Team" : patientLabel);
     const newEvent = {
       id: `time-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
       title,
@@ -88,11 +89,11 @@ export const CareProvider = ({ children }) => {
   const authenticateCaregiver = useCallback((passcode) => {
     if (passcode === settings.demoPasscode) {
       setViewMode("caregiver");
-      showToast("Switched to Caregiver View (Sarah Wilson)", "success");
-      logTimelineEvent("Caregiver Access Authenticated", "Caregiver dashboard unlocked via demo passcode.", "caregiver", "Sarah Wilson");
+      showToast("Switched to Caregiver View", "success");
+      logTimelineEvent("Caregiver Access Authenticated", "Caregiver dashboard unlocked via passcode.", "caregiver", "Care Team");
       return true;
     }
-    showToast("Invalid demo passcode. Default is 2468.", "error");
+    showToast("Invalid passcode. Default is 2468.", "error");
     return false;
   }, [settings.demoPasscode, showToast, logTimelineEvent]);
 
@@ -114,7 +115,8 @@ export const CareProvider = ({ children }) => {
     const todayMissed = todayDoses.filter((d) => d.status === "missed").length;
     const todayPending = todayDoses.filter((d) => d.status === "pending").length;
     const todayEvaluated = todayTaken + todayMissed;
-    const todayAdherence = todayEvaluated > 0 ? Math.round((todayTaken / todayEvaluated) * 100) : 100;
+    // Don't fabricate 100% when there is zero data
+    const todayAdherence = todayEvaluated > 0 ? Math.round((todayTaken / todayEvaluated) * 100) : 0;
 
     // Weekly doses (past 7 days including today)
     const sevenDaysAgo = new Date();
@@ -129,7 +131,9 @@ export const CareProvider = ({ children }) => {
     const weeklyTaken = weeklyDoses.filter((d) => d.status === "taken").length;
     const weeklyMissed = weeklyDoses.filter((d) => d.status === "missed").length;
     const weeklyEvaluated = weeklyTaken + weeklyMissed;
-    const weeklyAdherence = weeklyEvaluated > 0 ? Math.round((weeklyTaken / weeklyEvaluated) * 100) : 100;
+    // Don't fabricate 100% when there is zero data
+    const weeklyAdherence = weeklyEvaluated > 0 ? Math.round((weeklyTaken / weeklyEvaluated) * 100) : 0;
+    const hasAdherenceData = weeklyEvaluated > 0 || todayEvaluated > 0;
 
     // Day-by-day weekly adherence chart data (last 7 days in chronological order)
     const weeklyChartData = [];
@@ -146,7 +150,7 @@ export const CareProvider = ({ children }) => {
       const dayPending = dayRecords.filter((d) => d.status === "pending").length;
       const dayTotal = dayTaken + dayMissed + dayPending;
       const dayEval = dayTaken + dayMissed;
-      const dayAdherence = dayEval > 0 ? Math.round((dayTaken / dayEval) * 100) : (dayTotal > 0 && dayPending === dayTotal ? 100 : 100);
+      const dayAdherence = dayEval > 0 ? Math.round((dayTaken / dayEval) * 100) : 0;
 
       weeklyChartData.push({
         date: dateStr,
@@ -170,6 +174,7 @@ export const CareProvider = ({ children }) => {
       weeklyTaken,
       weeklyMissed,
       weeklyAdherence,
+      hasAdherenceData,
       weeklyChartData
     };
   }, [doseRecords]);
@@ -207,7 +212,7 @@ export const CareProvider = ({ children }) => {
       return updated;
     });
 
-    // Reduce stock by 1 for the taken medication (Micro-feature 3)
+    // Reduce stock by 1 for the taken medication
     if (medId) {
       setMedications((prev) => {
         const updatedMeds = prev.map((m) => {
@@ -270,9 +275,9 @@ export const CareProvider = ({ children }) => {
 
       // Generate caregiver email preview payload
       const emailPayload = generateEmailPayload(EMAIL_TEMPLATES.MISSED_DOSE, {
-        patientName: patient.name,
-        caregiverName: patient.primaryCaregiver,
-        caregiverEmail: patient.emergencyContact.email,
+        patientName: patient.name || "Patient",
+        caregiverName: patient.primaryCaregiver || patient.emergencyContact?.name || "Caregiver",
+        caregiverEmail: patient.emergencyContact?.email || "",
         medName: targetDose.medName,
         dosage: targetDose.dosage,
         scheduledTime: targetDose.scheduledTime
@@ -391,7 +396,7 @@ export const CareProvider = ({ children }) => {
     showToast(`${medName} is now ${newStatus}`, "info");
   }, [logTimelineEvent, showToast]);
 
-  // Stock update & Refill (Micro-feature 3 & 4)
+  // Stock update & Refill
   const updateMedicationStock = useCallback((id, newQuantity) => {
     const qty = Math.max(0, parseInt(newQuantity, 10) || 0);
 
@@ -500,7 +505,7 @@ export const CareProvider = ({ children }) => {
     showToast(`Marked appointment with ${docName} as completed`, "success");
   }, [logTimelineEvent, showToast]);
 
-  // Next Upcoming Appointment with countdown (Micro-feature 5)
+  // Next Upcoming Appointment with countdown
   const nextAppointment = useMemo(() => {
     const upcoming = appointments
       .filter((a) => a.status === "upcoming")
@@ -527,7 +532,7 @@ export const CareProvider = ({ children }) => {
     };
   }, [appointments]);
 
-  // Next Pending Dose (for Next Reminder Card)
+  // Next Pending Dose
   const nextPendingDose = useMemo(() => {
     const todayStr = getTodayDateStr();
     const pendingToday = doseRecords
@@ -647,7 +652,7 @@ export const CareProvider = ({ children }) => {
     showToast("Notification inbox cleared", "info");
   }, [showToast]);
 
-  // Daily Checklist Operations (Micro-feature 7)
+  // Daily Checklist Operations
   const toggleChecklistItem = useCallback((id) => {
     setChecklist((prev) => {
       const updated = prev.map((item) => {
@@ -675,7 +680,7 @@ export const CareProvider = ({ children }) => {
     showToast("Daily checklist reset for today", "info");
   }, [logTimelineEvent, showToast]);
 
-  // Settings & Preferences Operations (Micro-feature 8 & Section 14)
+  // Settings & Preferences Operations
   const updateSettings = useCallback((newSettings) => {
     setSettings((prev) => {
       const updated = { ...prev, ...newSettings };
@@ -685,9 +690,9 @@ export const CareProvider = ({ children }) => {
     showToast("Preferences saved successfully", "success");
   }, [showToast]);
 
-  // Reset All Demo Data
+  // Reset All Data — clears to clean empty state, never re-seeds fictional data
   const resetAllDemoData = useCallback(() => {
-    storageService.resetAllDemoData();
+    storageService.resetAllData();
     setPatient(storageService.getPatient());
     setCareTeam(storageService.getCareTeam());
     setMedications(storageService.getMedications());
@@ -698,7 +703,7 @@ export const CareProvider = ({ children }) => {
     setTimeline(storageService.getTimeline());
     setSettings(storageService.getSettings());
     setViewMode("patient");
-    showToast("Demonstration data restored to initial state", "success");
+    showToast("All data has been reset to a clean state.", "success");
   }, [showToast]);
 
   const value = {

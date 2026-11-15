@@ -1,14 +1,10 @@
 import React, { useState } from "react";
 import {
   Bell,
-  CheckCircle2,
-  AlertTriangle,
-  Info,
   Clock,
   Trash2,
   Mail,
   Check,
-  Filter,
   Eye
 } from "lucide-react";
 import { useCare } from "../../context/CareContext";
@@ -24,6 +20,7 @@ export const NotificationsPage = () => {
     clearNotification,
     clearAllNotifications,
     patient,
+    medications,
     setEmailPreviewModalData
   } = useCare();
 
@@ -48,14 +45,15 @@ export const NotificationsPage = () => {
   };
 
   const handleTestEmailPreview = () => {
+    const med = medications.length > 0 ? medications[0] : null;
     const testPayload = generateEmailPayload(EMAIL_TEMPLATES.MISSED_DOSE, {
-      patientName: patient.name,
-      caregiverName: patient.primaryCaregiver,
-      caregiverEmail: patient.emergencyContact.email,
-      medName: "Calcium Supplement (500mg)",
-      dosage: "1 tablet",
-      scheduledTime: "12:30 PM",
-      instructions: "Take with meal"
+      patientName: patient.name || "Patient",
+      caregiverName: patient.primaryCaregiver || patient.emergencyContact?.name || "Caregiver",
+      caregiverEmail: patient.emergencyContact?.email || "caregiver@example.com",
+      medName: med ? med.name : "Prescribed Medication",
+      dosage: med ? med.dosage : "1 dose",
+      scheduledTime: (med && med.scheduleTimes?.[0]) || "12:30 PM",
+      instructions: (med && med.foodInstructions) || "Take with meal"
     });
     setEmailPreviewModalData(testPayload);
   };
@@ -128,10 +126,14 @@ export const NotificationsPage = () => {
       {/* Notifications List */}
       <div className="notifications-list-container">
         {filteredNotifications.length === 0 ? (
-          <div className="card empty-state-card">
-            <Bell size={32} className="text-muted" />
-            <h4>Your notification inbox is clear</h4>
-            <p>New dose alerts and appointment reminders will arrive here automatically.</p>
+          <div className="card empty-state-card" style={{ textAlign: "center", padding: "40px 20px" }}>
+            <Bell size={42} style={{ color: "var(--aqua)", margin: "0 auto 12px" }} />
+            <h4 style={{ fontSize: "1.2rem", fontWeight: 700, color: "var(--deep-ocean)", marginBottom: "8px" }}>
+              Your notification inbox is clear
+            </h4>
+            <p style={{ color: "var(--text-muted)", fontSize: "0.9rem", maxWidth: "460px", margin: "0 auto", lineHeight: 1.5 }}>
+              Proactive alerts for upcoming doses, missed medications, doctor appointments, and care team activities will appear here in real-time.
+            </p>
           </div>
         ) : (
           filteredNotifications.map((notif) => (

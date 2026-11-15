@@ -12,8 +12,7 @@ import {
   List,
   CalendarDays,
   ChevronLeft,
-  ChevronRight,
-  ExternalLink
+  ChevronRight
 } from "lucide-react";
 import { useCare } from "../../context/CareContext";
 
@@ -38,8 +37,8 @@ export const AppointmentsPage = ({
     const matchesSearch =
       searchQuery === "" ||
       apt.doctorName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      apt.specialty.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      apt.hospitalName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (apt.specialty && apt.specialty.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (apt.hospitalName && apt.hospitalName.toLowerCase().includes(searchQuery.toLowerCase())) ||
       (apt.notes && apt.notes.toLowerCase().includes(searchQuery.toLowerCase()));
 
     if (!matchesSearch) return false;
@@ -48,7 +47,7 @@ export const AppointmentsPage = ({
     return apt.status === filterStatus;
   });
 
-  // Calculate days remaining helper (Micro-feature 5)
+  // Calculate days remaining helper
   const getDaysCountdown = (dateStr) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -154,7 +153,21 @@ export const AppointmentsPage = ({
       {/* View: List View */}
       {viewType === "list" ? (
         <div className="appointments-list-container">
-          {filteredAppointments.length === 0 ? (
+          {appointments.length === 0 ? (
+            <div className="card empty-state-card" style={{ textAlign: "center", padding: "40px 20px" }}>
+              <CalendarIcon size={42} style={{ color: "var(--aqua)", margin: "0 auto 12px" }} />
+              <h4 style={{ fontSize: "1.2rem", fontWeight: 700, color: "var(--deep-ocean)", marginBottom: "8px" }}>
+                No appointments scheduled yet
+              </h4>
+              <p style={{ color: "var(--text-muted)", fontSize: "0.9rem", maxWidth: "460px", margin: "0 auto 20px", lineHeight: 1.5 }}>
+                Track doctor consultations, specialist checkups, and wellness visits with automatic countdown reminders.
+              </p>
+              <button onClick={onOpenAddModal} className="btn btn-primary" style={{ margin: "0 auto" }}>
+                <Plus size={16} />
+                <span>Schedule First Appointment</span>
+              </button>
+            </div>
+          ) : filteredAppointments.length === 0 ? (
             <div className="card empty-state-card">
               <CalendarIcon size={32} className="text-muted" />
               <h4>No appointments found for this filter</h4>
@@ -176,7 +189,7 @@ export const AppointmentsPage = ({
                         <span className={`badge ${isCompleted ? "badge-turquoise" : "badge-ocean"}`}>
                           {isCompleted ? "Completed" : countdown}
                         </span>
-                        <span className="apt-specialty-badge">{apt.specialty}</span>
+                        {apt.specialty && <span className="apt-specialty-badge">{apt.specialty}</span>}
                       </div>
 
                       <div className="apt-actions-menu">
@@ -212,7 +225,7 @@ export const AppointmentsPage = ({
                       </div>
                       <div>
                         <h3 className="apt-doctor-title">{apt.doctorName}</h3>
-                        <span className="apt-hospital-title">{apt.hospitalName}</span>
+                        {apt.hospitalName && <span className="apt-hospital-title">{apt.hospitalName}</span>}
                       </div>
                     </div>
 
@@ -230,10 +243,12 @@ export const AppointmentsPage = ({
                         </span>
                       </div>
 
-                      <div className="apt-meta-item">
-                        <MapPin size={15} className="meta-icon" />
-                        <span>{apt.location}</span>
-                      </div>
+                      {apt.location && (
+                        <div className="apt-meta-item">
+                          <MapPin size={15} className="meta-icon" />
+                          <span>{apt.location}</span>
+                        </div>
+                      )}
                     </div>
 
                     {apt.notes && (

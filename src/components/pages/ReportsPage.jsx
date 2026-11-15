@@ -3,12 +3,9 @@ import {
   Printer,
   FileText,
   TrendingUp,
-  CheckCircle2,
-  AlertTriangle,
   Calendar,
   Pill,
   User,
-  PhoneCall,
   Clock
 } from "lucide-react";
 import { useCare } from "../../context/CareContext";
@@ -18,8 +15,7 @@ export const ReportsPage = () => {
     patient,
     medications,
     appointments,
-    adherenceStats,
-    checklist
+    adherenceStats
   } = useCare();
 
   const {
@@ -29,13 +25,15 @@ export const ReportsPage = () => {
     todayAdherence,
     weeklyTaken,
     weeklyMissed,
-    weeklyAdherence,
-    weeklyChartData
+    weeklyAdherence
   } = adherenceStats;
 
   const activeMeds = medications.filter((m) => m.status === "active");
   const upcomingApts = appointments.filter((a) => a.status === "upcoming");
   const completedApts = appointments.filter((a) => a.status === "completed");
+
+  const totalDosesLogged = weeklyTaken + weeklyMissed + todayTaken + todayMissed;
+  const hasAdherenceData = totalDosesLogged > 0;
 
   const handlePrint = () => {
     window.print();
@@ -62,7 +60,7 @@ export const ReportsPage = () => {
           </p>
         </div>
 
-        {/* Micro-feature 10: Print Button */}
+        {/* Print Button */}
         <button
           onClick={handlePrint}
           className="btn btn-primary"
@@ -73,14 +71,16 @@ export const ReportsPage = () => {
         </button>
       </div>
 
-      {/* Micro-feature 9: Weekly Care Summary KPI Banner */}
+      {/* Weekly Care Summary KPI Banner */}
       <div className="card weekly-summary-kpi-banner no-print">
         <div className="summary-banner-header">
           <div className="banner-title-wrap">
             <TrendingUp size={22} className="text-turquoise" />
             <h3 className="banner-title">Weekly Healthcare Adherence Performance</h3>
           </div>
-          <span className="badge badge-turquoise">7-Day Trajectory: {weeklyAdherence}%</span>
+          <span className="badge badge-turquoise">
+            7-Day Trajectory: {hasAdherenceData ? `${weeklyAdherence}%` : "No data yet"}
+          </span>
         </div>
 
         <div className="weekly-kpi-grid">
@@ -93,7 +93,7 @@ export const ReportsPage = () => {
             <span className="kpi-label">Doses Missed this Week</span>
           </div>
           <div className="kpi-box">
-            <span className="kpi-val text-ocean">{weeklyAdherence}%</span>
+            <span className="kpi-val text-ocean">{hasAdherenceData ? `${weeklyAdherence}%` : "—"}</span>
             <span className="kpi-label">Overall Weekly Adherence</span>
           </div>
           <div className="kpi-box">
@@ -103,7 +103,7 @@ export const ReportsPage = () => {
         </div>
       </div>
 
-      {/* Micro-feature 10: Official Printable Care Report Sheet */}
+      {/* Official Printable Care Report Sheet */}
       <div className="card printable-care-sheet">
         {/* Printable Header */}
         <div className="printable-sheet-header">
@@ -122,22 +122,27 @@ export const ReportsPage = () => {
           <h4 className="print-section-heading">Patient Healthcare Profile</h4>
           <div className="print-patient-grid">
             <div>
-              <strong>Full Name:</strong> {patient.name}
+              <strong>Full Name:</strong> {patient.name || "Not configured"}
             </div>
             <div>
-              <strong>Age / DOB:</strong> {patient.age} yrs ({patient.dob})
+              <strong>Age / DOB:</strong>{" "}
+              {patient.age ? `${patient.age} yrs` : "—"} {patient.dob ? `(${patient.dob})` : ""}
             </div>
             <div>
-              <strong>Blood Group:</strong> {patient.bloodGroup}
+              <strong>Blood Group:</strong> {patient.bloodGroup || "—"}
             </div>
             <div>
-              <strong>Primary Caregiver:</strong> {patient.primaryCaregiver} ({patient.emergencyContact.phone})
+              <strong>Primary Caregiver:</strong> {patient.primaryCaregiver || "—"}{" "}
+              {patient.emergencyContact?.phone ? `(${patient.emergencyContact.phone})` : ""}
             </div>
             <div className="grid-full-width">
-              <strong>Emergency Contact:</strong> {patient.emergencyContact.name} ({patient.emergencyContact.relation}) — Phone: {patient.emergencyContact.phone}
+              <strong>Emergency Contact:</strong>{" "}
+              {patient.emergencyContact?.name || "None configured"}{" "}
+              {patient.emergencyContact?.relation ? `(${patient.emergencyContact.relation})` : ""}{" "}
+              {patient.emergencyContact?.phone ? `— Phone: ${patient.emergencyContact.phone}` : ""}
             </div>
             <div className="grid-full-width">
-              <strong>Clinical Healthcare Notes:</strong> {patient.healthcareNotes}
+              <strong>Clinical Healthcare Notes:</strong> {patient.healthcareNotes || "None provided"}
             </div>
           </div>
         </div>
@@ -145,32 +150,38 @@ export const ReportsPage = () => {
         {/* Active Medications & Schedule Table */}
         <div className="printable-section">
           <h4 className="print-section-heading">Active Prescription & Supplement Regimen</h4>
-          <table className="printable-table">
-            <thead>
-              <tr>
-                <th>Medication</th>
-                <th>Dosage</th>
-                <th>Frequency</th>
-                <th>Daily Schedule</th>
-                <th>Instructions</th>
-                <th>Remaining Supply</th>
-              </tr>
-            </thead>
-            <tbody>
-              {activeMeds.map((med) => (
-                <tr key={med.id}>
-                  <td>
-                    <strong>{med.name}</strong>
-                  </td>
-                  <td>{med.dosage}</td>
-                  <td>{med.frequency}</td>
-                  <td>{(med.scheduleTimes || []).join(", ")}</td>
-                  <td>{med.foodInstructions || "As directed"}</td>
-                  <td>{med.stockQuantity} pills</td>
+          {activeMeds.length === 0 ? (
+            <p className="no-print-items" style={{ padding: "10px 0", color: "#666" }}>
+              No active medications currently configured.
+            </p>
+          ) : (
+            <table className="printable-table">
+              <thead>
+                <tr>
+                  <th>Medication</th>
+                  <th>Dosage</th>
+                  <th>Frequency</th>
+                  <th>Daily Schedule</th>
+                  <th>Instructions</th>
+                  <th>Remaining Supply</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {activeMeds.map((med) => (
+                  <tr key={med.id}>
+                    <td>
+                      <strong>{med.name}</strong>
+                    </td>
+                    <td>{med.dosage}</td>
+                    <td>{med.frequency}</td>
+                    <td>{(med.scheduleTimes || []).join(", ")}</td>
+                    <td>{med.foodInstructions || "As directed"}</td>
+                    <td>{med.stockQuantity} pills</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
 
         {/* Adherence Summary Section */}
@@ -178,14 +189,14 @@ export const ReportsPage = () => {
           <h4 className="print-section-heading">Medication Adherence Performance</h4>
           <div className="print-adherence-grid">
             <div className="print-adherence-box">
-              <span className="print-box-num">{todayAdherence}%</span>
+              <span className="print-box-num">{todayTaken + todayMissed > 0 ? `${todayAdherence}%` : "—"}</span>
               <span className="print-box-label">Today's Adherence Rate</span>
               <span className="print-box-sub">
                 {todayTaken} Taken • {todayMissed} Missed • {todayPending} Pending
               </span>
             </div>
             <div className="print-adherence-box">
-              <span className="print-box-num">{weeklyAdherence}%</span>
+              <span className="print-box-num">{hasAdherenceData ? `${weeklyAdherence}%` : "—"}</span>
               <span className="print-box-label">7-Day Trailing Adherence</span>
               <span className="print-box-sub">
                 {weeklyTaken} Total Taken • {weeklyMissed} Total Missed
@@ -214,13 +225,13 @@ export const ReportsPage = () => {
                 {upcomingApts.map((apt) => (
                   <tr key={apt.id}>
                     <td>
-                      <strong>{apt.doctorName}</strong> ({apt.specialty})
+                      <strong>{apt.doctorName}</strong> {apt.specialty ? `(${apt.specialty})` : ""}
                     </td>
                     <td>
                       {apt.date} at {apt.time}
                     </td>
-                    <td>{apt.hospitalName}</td>
-                    <td>{apt.location}</td>
+                    <td>{apt.hospitalName || "—"}</td>
+                    <td>{apt.location || "—"}</td>
                     <td>{apt.notes || "Routine follow-up"}</td>
                   </tr>
                 ))}
@@ -232,7 +243,16 @@ export const ReportsPage = () => {
         {/* Printable Footer */}
         <div className="printable-sheet-footer">
           <p>
-            CareCircle System Record. For clinical inquiries or immediate medical emergencies, contact Primary Caregiver <strong>{patient.emergencyContact.name}</strong> at <strong>{patient.emergencyContact.phone}</strong> or call local emergency services (911).
+            CareCircle System Record. For clinical inquiries or immediate medical emergencies, contact{" "}
+            {patient.emergencyContact?.name ? (
+              <>
+                Primary Contact <strong>{patient.emergencyContact.name}</strong>
+                {patient.emergencyContact.phone && <> at <strong>{patient.emergencyContact.phone}</strong></>}
+              </>
+            ) : (
+              "emergency contact"
+            )}{" "}
+            or call local emergency services (911).
           </p>
         </div>
       </div>

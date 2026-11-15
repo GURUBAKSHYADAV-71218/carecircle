@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { CareProvider, useCare } from "./context/CareContext";
 import { Sidebar } from "./components/layout/Sidebar";
 import { Header } from "./components/layout/Header";
@@ -26,6 +26,7 @@ import { CaregiverPasscodeModal } from "./components/modals/CaregiverPasscodeMod
 import { EmailPreviewModal } from "./components/modals/EmailPreviewModal";
 import { RefillModal } from "./components/modals/RefillModal";
 import { ConfirmModal } from "./components/modals/ConfirmModal";
+import { SetupProfileModal } from "./components/modals/SetupProfileModal";
 
 const AppContent = () => {
   const [activePage, setActivePage] = useState("dashboard");
@@ -42,6 +43,7 @@ const AppContent = () => {
   const [editingTeamMember, setEditingTeamMember] = useState(null);
 
   const [isPasscodeModalOpen, setIsPasscodeModalOpen] = useState(false);
+  const [isSetupProfileOpen, setIsSetupProfileOpen] = useState(false);
 
   // Generic confirmation modal state
   const [confirmModalConfig, setConfirmModalConfig] = useState({
@@ -54,6 +56,7 @@ const AppContent = () => {
   });
 
   const {
+    patient,
     deleteMedication,
     deleteAppointment,
     removeCareTeamMember,
@@ -63,24 +66,26 @@ const AppContent = () => {
     settings
   } = useCare();
 
-  // Background proactive reminder scheduler (Section 10)
-  useEffect(() => {
+  // Show setup modal automatically on first render if patient has no name
+  const [hasShownSetup, setHasShownSetup] = useState(() => {
+    // Only auto-show once per session
+    return false;
+  });
+
+  React.useEffect(() => {
+    if (!hasShownSetup && (!patient.name || patient.name.trim() === "")) {
+      setIsSetupProfileOpen(true);
+      setHasShownSetup(true);
+    }
+  }, [patient.name, hasShownSetup]);
+
+  // Background proactive reminder scheduler
+  React.useEffect(() => {
     const checkUpcomingReminders = () => {
       if (!settings.notificationPrefs?.appointments) return;
-
-      const todayStr = new Date().toISOString().split("T")[0];
-      const tomorrow = new Date();
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      const tomorrowStr = tomorrow.toISOString().split("T")[0];
-
-      appointments.forEach((apt) => {
-        if (apt.status === "upcoming" && (apt.date === todayStr || apt.date === tomorrowStr)) {
-          // Already handled or alert in place
-        }
-      });
+      // Reminder logic placeholder (appointments already handled by context)
     };
 
-    // Run on mount and check periodically
     checkUpcomingReminders();
     const interval = setInterval(checkUpcomingReminders, 60000);
     return () => clearInterval(interval);
@@ -113,18 +118,18 @@ const AppContent = () => {
     setConfirmModalConfig({
       isOpen: true,
       title: `Remove Member: ${member.name}`,
-      message: `Are you sure you want to remove ${member.name} from the Care Team? They will no longer have access to Margaret's care circle.`,
+      message: `Are you sure you want to remove ${member.name} from the Care Team? They will no longer have access to this care circle.`,
       confirmLabel: "Remove Member",
       confirmVariant: "btn-danger",
       onConfirm: () => removeCareTeamMember(member.id)
     });
   };
 
-  const promptResetDemoData = () => {
+  const promptResetData = () => {
     setConfirmModalConfig({
       isOpen: true,
-      title: "Reset All Demonstration Data",
-      message: "Are you sure you want to reset all data? This will restore the initial demonstration records for Margaret Wilson, prescriptions, doses, and appointments.",
+      title: "Reset All Data",
+      message: "Are you sure you want to reset all data? This will clear all medications, appointments, care team members, and patient information permanently.",
       confirmLabel: "Reset Everything",
       confirmVariant: "btn-danger",
       onConfirm: () => resetAllDemoData()
@@ -141,6 +146,7 @@ const AppContent = () => {
         activePage={activePage}
         setActivePage={setActivePage}
         openPasscodeModal={() => setIsPasscodeModalOpen(true)}
+        onOpenSetupProfile={() => setIsSetupProfileOpen(true)}
       />
 
       <div className="main-wrapper">
@@ -149,6 +155,7 @@ const AppContent = () => {
           activePage={activePage}
           setActivePage={setActivePage}
           openPasscodeModal={() => setIsPasscodeModalOpen(true)}
+          onOpenSetupProfile={() => setIsSetupProfileOpen(true)}
         />
 
         {/* Main Workspace Content */}
@@ -160,6 +167,7 @@ const AppContent = () => {
               onOpenAddAptModal={() => setIsAddAptOpen(true)}
               onOpenRefillModal={(med) => setRefillMed(med)}
               onOpenPasscodeModal={() => setIsPasscodeModalOpen(true)}
+              onOpenSetupProfile={() => setIsSetupProfileOpen(true)}
             />
           )}
 
@@ -196,7 +204,10 @@ const AppContent = () => {
           {activePage === "reports" && <ReportsPage />}
 
           {activePage === "settings" && (
-            <SettingsPage onOpenResetConfirm={promptResetDemoData} />
+            <SettingsPage
+              onOpenResetConfirm={promptResetData}
+              onOpenSetupProfile={() => setIsSetupProfileOpen(true)}
+            />
           )}
         </main>
       </div>
@@ -205,6 +216,11 @@ const AppContent = () => {
       <MobileNav activePage={activePage} setActivePage={setActivePage} />
 
       {/* Modals Collection */}
+      <SetupProfileModal
+        isOpen={isSetupProfileOpen}
+        onClose={() => setIsSetupProfileOpen(false)}
+      />
+
       <AddMedicationModal
         isOpen={isAddMedOpen}
         onClose={() => setIsAddMedOpen(false)}

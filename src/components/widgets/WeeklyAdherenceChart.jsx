@@ -1,9 +1,9 @@
 import React from "react";
-import { TrendingUp, CheckCircle, XCircle, Clock } from "lucide-react";
+import { TrendingUp, CheckCircle, XCircle, Clock, Info } from "lucide-react";
 import { useCare } from "../../context/CareContext";
 
 export const WeeklyAdherenceChart = () => {
-  const { adherenceStats } = useCare();
+  const { adherenceStats, medications } = useCare();
   const {
     todayTaken,
     todayMissed,
@@ -12,8 +12,11 @@ export const WeeklyAdherenceChart = () => {
     weeklyTaken,
     weeklyMissed,
     weeklyAdherence,
+    hasAdherenceData,
     weeklyChartData
   } = adherenceStats;
+
+  const totalDosesRecorded = weeklyChartData.reduce((acc, d) => acc + d.total, 0);
 
   return (
     <div className="card adherence-chart-card">
@@ -29,7 +32,7 @@ export const WeeklyAdherenceChart = () => {
         </div>
         <div className="adherence-badge-group">
           <div className="adherence-rate-pill">
-            <span className="rate-num">{weeklyAdherence}%</span>
+            <span className="rate-num">{hasAdherenceData ? `${weeklyAdherence}%` : "—"}</span>
             <span className="rate-label">7-Day Avg</span>
           </div>
         </div>
@@ -68,49 +71,63 @@ export const WeeklyAdherenceChart = () => {
         </div>
       </div>
 
-      {/* 7-Day Visual Adherence Chart */}
-      <div className="weekly-chart-wrapper">
-        <div className="chart-header-row">
-          <span className="chart-legend-title">7-Day Adherence Trend</span>
-          <div className="chart-legend-items">
-            <span className="legend-item"><span className="legend-dot dot-taken"></span> Taken</span>
-            <span className="legend-item"><span className="legend-dot dot-missed"></span> Missed</span>
-          </div>
+      {/* 7-Day Visual Adherence Chart or Empty State */}
+      {totalDosesRecorded === 0 && !hasAdherenceData ? (
+        <div style={{ padding: "30px 20px", textAlign: "center", background: "var(--soft-aqua-bg)", borderRadius: "10px", margin: "16px 0" }}>
+          <Info size={24} style={{ color: "var(--ocean-blue)", margin: "0 auto 8px" }} />
+          <h4 style={{ fontSize: "0.95rem", fontWeight: 600, color: "var(--deep-ocean)", marginBottom: "4px" }}>
+            No Adherence Records Yet
+          </h4>
+          <p style={{ fontSize: "0.82rem", color: "var(--text-muted)", maxWidth: "380px", margin: "0 auto" }}>
+            {medications.length === 0
+              ? "Add medications to begin tracking daily adherence rates and performance trends."
+              : "Mark scheduled doses as Taken or Missed to generate your 7-day adherence chart."}
+          </p>
         </div>
+      ) : (
+        <div className="weekly-chart-wrapper">
+          <div className="chart-header-row">
+            <span className="chart-legend-title">7-Day Adherence Trend</span>
+            <div className="chart-legend-items">
+              <span className="legend-item"><span className="legend-dot dot-taken"></span> Taken</span>
+              <span className="legend-item"><span className="legend-dot dot-missed"></span> Missed</span>
+            </div>
+          </div>
 
-        <div className="weekly-bars-container">
-          {weeklyChartData.map((day, idx) => {
-            const heightPercent = Math.max(12, day.adherence);
-            const isPerfect = day.adherence === 100 && day.taken > 0;
-            const hasMissed = day.missed > 0;
+          <div className="weekly-bars-container">
+            {weeklyChartData.map((day, idx) => {
+              const hasData = day.taken + day.missed > 0;
+              const heightPercent = hasData ? Math.max(12, day.adherence) : 8;
+              const hasMissed = day.missed > 0;
 
-            return (
-              <div key={idx} className={`bar-col ${day.isToday ? "is-today" : ""}`}>
-                <div className="bar-hover-tooltip">
-                  <strong>{day.dayName}, {day.dayLabel}</strong>
-                  <div>Adherence: {day.adherence}%</div>
-                  <div>Taken: {day.taken} | Missed: {day.missed}</div>
-                </div>
+              return (
+                <div key={idx} className={`bar-col ${day.isToday ? "is-today" : ""}`}>
+                  <div className="bar-hover-tooltip">
+                    <strong>{day.dayName}, {day.dayLabel}</strong>
+                    <div>Adherence: {hasData ? `${day.adherence}%` : "No doses logged"}</div>
+                    <div>Taken: {day.taken} | Missed: {day.missed}</div>
+                  </div>
 
-                <div className="bar-track">
-                  <div
-                    className={`bar-fill ${hasMissed ? "bar-with-missed" : "bar-perfect"}`}
-                    style={{ height: `${heightPercent}%` }}
-                  >
-                    <span className="bar-percentage-label">{day.adherence}%</span>
+                  <div className="bar-track">
+                    <div
+                      className={`bar-fill ${!hasData ? "bar-empty" : hasMissed ? "bar-with-missed" : "bar-perfect"}`}
+                      style={{ height: `${heightPercent}%`, opacity: hasData ? 1 : 0.3 }}
+                    >
+                      {hasData && <span className="bar-percentage-label">{day.adherence}%</span>}
+                    </div>
+                  </div>
+
+                  <div className="bar-label-group">
+                    <span className="bar-day-name">{day.dayName}</span>
+                    <span className="bar-day-date">{day.dayLabel}</span>
+                    {day.isToday && <span className="today-indicator-dot" title="Today" />}
                   </div>
                 </div>
-
-                <div className="bar-label-group">
-                  <span className="bar-day-name">{day.dayName}</span>
-                  <span className="bar-day-date">{day.dayLabel}</span>
-                  {day.isToday && <span className="today-indicator-dot" title="Today" />}
-                </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="adherence-formula-note">
         <span>Formula: Taken Doses / (Taken Doses + Missed Doses) × 100</span>

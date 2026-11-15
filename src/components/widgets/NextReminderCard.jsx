@@ -1,23 +1,30 @@
 import React from "react";
-import { Pill, Clock, Check, AlertCircle, Sparkles } from "lucide-react";
+import { Clock, Check, Sparkles, Pill } from "lucide-react";
 import { useCare } from "../../context/CareContext";
 
 export const NextReminderCard = () => {
-  const { nextPendingDose, markDoseTaken } = useCare();
+  const { nextPendingDose, markDoseTaken, medications } = useCare();
 
   if (!nextPendingDose) {
+    const hasMeds = medications.length > 0;
     return (
-      <div className="card next-reminder-card card-all-complete">
+      <div className={`card next-reminder-card ${hasMeds ? "card-all-complete" : ""}`}>
         <div className="card-header">
           <div className="card-title">
-            <Sparkles size={19} className="text-turquoise" />
+            {hasMeds ? (
+              <Sparkles size={19} className="text-turquoise" />
+            ) : (
+              <Pill size={19} className="text-ocean" />
+            )}
             <span>Next Medication Dose</span>
           </div>
-          <span className="badge badge-turquoise">All Caught Up</span>
+          {hasMeds && <span className="badge badge-turquoise">All Caught Up</span>}
         </div>
         <div className="empty-reminder-body">
           <p className="all-complete-msg">
-            All scheduled doses for today have been completed. Outstanding adherence!
+            {hasMeds
+              ? "All scheduled doses for today have been completed."
+              : "No medications added yet. Scheduled doses will appear here once configured."}
           </p>
         </div>
       </div>
@@ -45,7 +52,7 @@ export const NextReminderCard = () => {
           <p className="reminder-med-dosage">{nextPendingDose.dosage}</p>
         </div>
 
-        {/* Micro-feature 1: Quick Dose Action */}
+        {/* Quick Dose Action */}
         <div className="reminder-action-container">
           <button
             onClick={() => markDoseTaken(nextPendingDose.id)}

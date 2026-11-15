@@ -10,17 +10,21 @@ import {
   Settings,
   ShieldCheck,
   UserCheck,
-  HeartHandshake
+  HeartHandshake,
+  UserPlus
 } from "lucide-react";
 import { useCare } from "../../context/CareContext";
+import { InitialsAvatar } from "../common/InitialsAvatar";
 
-export const Sidebar = ({ activePage, setActivePage, openPasscodeModal }) => {
+export const Sidebar = ({ activePage, setActivePage, openPasscodeModal, onOpenSetupProfile }) => {
   const {
     patient,
     unreadNotificationsCount,
     viewMode,
     switchBackToPatient
   } = useCare();
+
+  const isNewUser = !patient.name || patient.name.trim() === "";
 
   const navItems = [
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -53,17 +57,66 @@ export const Sidebar = ({ activePage, setActivePage, openPasscodeModal }) => {
 
       {/* Patient Identity Badge in Sidebar */}
       <div className="sidebar-patient-card">
-        <img
-          src={patient.avatar}
-          alt={patient.name}
-          className="sidebar-patient-avatar"
-        />
-        <div className="sidebar-patient-info">
-          <span className="sidebar-patient-name">{patient.name}</span>
-          <span className="sidebar-patient-meta">
-            Age {patient.age} • Blood {patient.bloodGroup}
-          </span>
-        </div>
+        {isNewUser ? (
+          <button
+            onClick={onOpenSetupProfile}
+            className="sidebar-setup-btn"
+            title="Set up patient profile"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "10px",
+              width: "100%",
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              padding: 0,
+              textAlign: "left"
+            }}
+          >
+            <div
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: "50%",
+                background: "rgba(255,255,255,0.12)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+                border: "2px dashed rgba(255,255,255,0.35)"
+              }}
+            >
+              <UserPlus size={18} style={{ color: "rgba(255,255,255,0.7)" }} />
+            </div>
+            <div className="sidebar-patient-info">
+              <span className="sidebar-patient-name" style={{ color: "rgba(255,255,255,0.6)", fontStyle: "italic", fontSize: "0.82rem" }}>
+                Set Up Patient Profile
+              </span>
+              <span className="sidebar-patient-meta" style={{ color: "rgba(255,255,255,0.4)" }}>
+                Click to get started
+              </span>
+            </div>
+          </button>
+        ) : (
+          <>
+            <InitialsAvatar
+              name={patient.name}
+              avatar={patient.avatar}
+              size={44}
+              className="sidebar-patient-avatar"
+            />
+            <div className="sidebar-patient-info">
+              <span className="sidebar-patient-name">{patient.name}</span>
+              <span className="sidebar-patient-meta">
+                {patient.age ? `Age ${patient.age}` : ""}
+                {patient.age && patient.bloodGroup ? " • " : ""}
+                {patient.bloodGroup ? `Blood ${patient.bloodGroup}` : ""}
+                {!patient.age && !patient.bloodGroup ? "Patient" : ""}
+              </span>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Role / Mode Switcher Pill */}
@@ -85,7 +138,7 @@ export const Sidebar = ({ activePage, setActivePage, openPasscodeModal }) => {
           <button
             onClick={switchBackToPatient}
             className="btn-switch-role"
-            title="Switch back to Margaret's patient view"
+            title="Switch back to patient view"
           >
             Switch to Patient
           </button>
@@ -93,7 +146,7 @@ export const Sidebar = ({ activePage, setActivePage, openPasscodeModal }) => {
           <button
             onClick={openPasscodeModal}
             className="btn-switch-role"
-            title="Enter demo passcode (2468) for caregiver access"
+            title="Enter passcode for caregiver access"
           >
             Caregiver Access
           </button>
@@ -126,13 +179,23 @@ export const Sidebar = ({ activePage, setActivePage, openPasscodeModal }) => {
       <div className="sidebar-footer">
         <div className="caregiver-quick-contact">
           <span className="footer-label">Primary Caregiver</span>
-          <span className="footer-value">{patient.primaryCaregiver}</span>
-          <a
-            href={`tel:${patient.emergencyContact.phone.replace(/[^0-9+]/g, "")}`}
-            className="footer-phone-link"
-          >
-            {patient.emergencyContact.phone}
-          </a>
+          {patient.primaryCaregiver ? (
+            <>
+              <span className="footer-value">{patient.primaryCaregiver}</span>
+              {patient.emergencyContact?.phone && (
+                <a
+                  href={`tel:${patient.emergencyContact.phone.replace(/[^0-9+]/g, "")}`}
+                  className="footer-phone-link"
+                >
+                  {patient.emergencyContact.phone}
+                </a>
+              )}
+            </>
+          ) : (
+            <span className="footer-value" style={{ color: "rgba(255,255,255,0.4)", fontStyle: "italic" }}>
+              Not configured
+            </span>
+          )}
         </div>
       </div>
     </aside>

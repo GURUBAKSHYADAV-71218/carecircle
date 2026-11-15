@@ -8,15 +8,17 @@ import {
   CheckCircle2,
   AlertTriangle,
   Info,
-  Calendar,
-  X
+  X,
+  UserPlus
 } from "lucide-react";
 import { useCare } from "../../context/CareContext";
+import { InitialsAvatar } from "../common/InitialsAvatar";
 
 export const Header = ({
   activePage,
   setActivePage,
-  openPasscodeModal
+  openPasscodeModal,
+  onOpenSetupProfile
 }) => {
   const {
     patient,
@@ -32,6 +34,8 @@ export const Header = ({
 
   const [isNotifDropdownOpen, setIsNotifDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
+
+  const isNewUser = !patient.name || patient.name.trim() === "";
 
   // Close dropdown when clicked outside
   useEffect(() => {
@@ -49,7 +53,9 @@ export const Header = ({
       case "dashboard":
         return {
           title: "Care Dashboard",
-          subtitle: `Connected health overview for ${patient.name}`
+          subtitle: patient.name
+            ? `Connected health overview for ${patient.name}`
+            : "Welcome to CareCircle — set up your profile to get started"
         };
       case "medications":
         return {
@@ -116,7 +122,7 @@ export const Header = ({
       </div>
 
       <div className="header-right">
-        {/* Instant Search Bar (Micro-feature 2) */}
+        {/* Instant Search Bar */}
         <div className="header-search-box">
           <Search size={16} className="search-icon" />
           <input
@@ -137,15 +143,17 @@ export const Header = ({
           )}
         </div>
 
-        {/* Emergency Call Quick Access (Micro-feature 6) */}
-        <a
-          href={`tel:${patient.emergencyContact.phone.replace(/[^0-9+]/g, "")}`}
-          className="header-emergency-btn"
-          title={`Call Emergency Contact: ${patient.emergencyContact.name} (${patient.emergencyContact.phone})`}
-        >
-          <PhoneCall size={16} />
-          <span className="emergency-label">Emergency Call</span>
-        </a>
+        {/* Emergency Call — only show if phone configured */}
+        {patient.emergencyContact?.phone ? (
+          <a
+            href={`tel:${patient.emergencyContact.phone.replace(/[^0-9+]/g, "")}`}
+            className="header-emergency-btn"
+            title={`Call Emergency Contact: ${patient.emergencyContact.name} (${patient.emergencyContact.phone})`}
+          >
+            <PhoneCall size={16} />
+            <span className="emergency-label">Emergency Call</span>
+          </a>
+        ) : null}
 
         {/* Notification Bell with Dropdown */}
         <div className="header-notif-container" ref={dropdownRef}>
@@ -239,7 +247,7 @@ export const Header = ({
             <button
               onClick={openPasscodeModal}
               className="view-mode-button patient-active"
-              title="Click to enter Caregiver Mode (Passcode: 2468)"
+              title="Click to enter Caregiver Mode"
             >
               <UserCheck size={16} />
               <span className="mode-text">Patient View</span>
@@ -248,23 +256,55 @@ export const Header = ({
         </div>
 
         {/* Profile Avatar Chip */}
-        <div
-          className="header-profile-chip"
-          onClick={() => setActivePage("settings")}
-          title="Open Profile Settings"
-        >
-          <img
-            src={patient.avatar}
-            alt={patient.name}
-            className="header-avatar"
-          />
-          <div className="header-profile-text">
-            <span className="header-profile-name">{patient.name}</span>
-            <span className="header-profile-role">
-              {viewMode === "caregiver" ? "Sarah Wilson (Caregiver)" : "Elderly Resident"}
-            </span>
+        {isNewUser ? (
+          <div
+            className="header-profile-chip"
+            onClick={onOpenSetupProfile}
+            title="Set up patient profile"
+            style={{ cursor: "pointer" }}
+          >
+            <div
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: "50%",
+                background: "var(--muted-blue-bg)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+                border: "2px dashed var(--ocean-blue)"
+              }}
+            >
+              <UserPlus size={16} style={{ color: "var(--ocean-blue)" }} />
+            </div>
+            <div className="header-profile-text">
+              <span className="header-profile-name" style={{ color: "var(--ocean-blue)", fontWeight: 600 }}>
+                Complete Setup
+              </span>
+              <span className="header-profile-role">Click to add patient</span>
+            </div>
           </div>
-        </div>
+        ) : (
+          <div
+            className="header-profile-chip"
+            onClick={() => setActivePage("settings")}
+            title="Open Profile Settings"
+          >
+            <InitialsAvatar
+              name={patient.name}
+              avatar={patient.avatar}
+              size={36}
+              className="header-avatar"
+            />
+            <div className="header-profile-text">
+              <span className="header-profile-name">{patient.name}</span>
+              <span className="header-profile-role">
+                {viewMode === "caregiver" ? "Caregiver View Active" : "Elderly Resident"}
+              </span>
+            </div>
+          </div>
+        )}
       </div>
     </header>
   );
